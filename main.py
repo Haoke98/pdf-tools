@@ -5,8 +5,7 @@ import os.path
 import PyPDF2
 from PIL import Image
 from PyPDF2 import PdfReader, PdfWriter
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.utils import ImageReader
+from reportlab.lib.pagesizes import *
 from reportlab.pdfgen import canvas
 
 
@@ -15,6 +14,7 @@ from reportlab.pdfgen import canvas
 
 
 def unify_page_frame(in_fp, out_dir, padding: int = 0, show_progress: bool = True):
+    page_size = A4
     in_fn = os.path.basename(in_fp)
     pdf_fn_without_extension = os.path.splitext(in_fn)[0]
     out_fp = os.path.join(out_dir, in_fn)
@@ -52,29 +52,31 @@ def unify_page_frame(in_fp, out_dir, padding: int = 0, show_progress: bool = Tru
                         img = open(img_fp, "wb")
                         img.write(data)
                         img.close()
-            img = ImageReader(img_fp)
-            # 获取图片的宽度和高度
-            img_width, img_height = img.getSize()
-            # 创建一个新的 PDF 页面对象
-            packet = io.BytesIO()
-            c = canvas.Canvas(packet, pagesize=letter)
-            c.drawImage(img_fp, 0 + padding, 0 + padding, width=612 - padding * 2, height=792 - padding * 2)
-            c.save()
+                    # TODO:先参考源PDF中提取的图片的宽高，决定目标PDF的页面要采用纵向还是横向
 
-            # 移动到开始，并创建一个新的 PDF 页面对象
-            packet.seek(0)
-            new_pdf = PyPDF2.PdfReader(packet)
+                    if size[0]>size[1]:
+                        # 宽>高，即 横向
+                        page_size = LEDGER
+                    # 创建一个新的 PDF 页面对象
+                    packet = io.BytesIO()
+                    c = canvas.Canvas(packet, pagesize=page_size)
+                    w, h = page_size
+                    c.drawImage(img_fp, 0 + padding, 0 + padding, width=w - padding * 2, height=h - padding * 2)
+                    c.save()
 
-            # 获取新的 PDF 页面
-            new_page = new_pdf.pages[0]
-            if show_progress:
-                print(f"{(page_num + 1) / len(reader.pages) * 100:.2f}%", f"第{page_num + 1}/{len(reader.pages)}页",
-                      page.mediabox,
-                      "=" * 10,
-                      (img_width, img_height), "=" * 10, ">>>", new_page.mediabox)
-            # 将新的页面添加到 PDF 写入对象中
-            writer.add_page(new_page)
-            # new_page = PyPDF2.PageObject.create_blank_page(width=w, height=h)
+                    # 移动到开始，并创建一个新的 PDF 页面对象
+                    packet.seek(0)
+                    new_pdf = PyPDF2.PdfReader(packet)
+
+                    # 获取新的 PDF 页面
+                    new_page = new_pdf.pages[0]
+                    if show_progress:
+                        print(f"{(page_num + 1) / len(reader.pages) * 100:.2f}%", f"第{page_num + 1}/{len(reader.pages)}页",
+                              page.mediabox,
+                              "=" * 10, "=" * 10, ">>>", new_page.mediabox)
+                    # 将新的页面添加到 PDF 写入对象中
+                    writer.add_page(new_page)
+                    # new_page = PyPDF2.PageObject.create_blank_page(width=w, height=h)
         with open(out_fp, 'wb') as wf:
             writer.write(wf)
 
@@ -94,6 +96,6 @@ def bulk_unify_page_frame(source_dir, target_dir):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    bulk_unify_page_frame("新建文件夹", "out")
+    bulk_unify_page_frame("/Users/shadikesadamu/Downloads/飞翔周周练", "out-auto-new")
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
